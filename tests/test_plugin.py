@@ -94,6 +94,7 @@ def test_core_synced_and_manifest_valid():
     assert (REPO / market["plugins"][0]["source"]).resolve() == PLUGIN.resolve()
     src = (PLUGIN / "server" / "agw_mcp.py").read_text(encoding="utf-8")
     assert f'VERSION = "{manifest["version"]}"' in src, "VERSION trong agw_mcp.py phải khớp plugin.json"
+    assert src == (REPO / "agw_mcp" / "server.py").read_text(encoding="utf-8"), "plugin agw_mcp.py = bản chép server.py"
     env = mcp_cfg["mcpServers"]["sota-agentic-gateway"]["env"]
     for key, val in env.items():
         opt = re.fullmatch(r"\$\{user_config\.(\w+)\}", val)
@@ -224,3 +225,32 @@ def test_saas_tools_use_api_key_and_hitl():
             assert r["started"] is False and len(calls) == n, "không có hộp thoại xác nhận → không chạy"
 
     asyncio.run(run())
+
+
+def test_package_metadata_matches_plugin_and_pep723():
+    """Gói PyPI `sota-agw-mcp` và plugin chạy cùng 1 server: cùng phiên bản, cùng phụ thuộc."""
+    import tomllib
+
+    py = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    src = (REPO / "agw_mcp" / "server.py").read_text(encoding="utf-8")
+    manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    market = json.loads((REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    import agw_core
+
+    versions = {py["version"], manifest["version"], market["plugins"][0]["version"], agw_core.__version__,
+                re.search(r'^VERSION = "([^"]+)"', src, re.M).group(1)}
+    assert len(versions) == 1, versions
+    block = re.search(r"^# /// script\n(.*?)^# ///$", src, re.M | re.S).group(1)
+    pep723 = re.findall(r'^#\s+"([^"]+)",?$', block, re.M)
+    assert sorted(pep723) == sorted(py["dependencies"]), (pep723, py["dependencies"])
+    assert py["scripts"]["sota-agw-mcp"] == "agw_mcp.server:cli"
+
+
+def test_send_command_matches_install_mode():
+    """Gói đã cài → lệnh xác nhận gửi bằng tay là `uvx sota-agw-mcp send …`; bản plugin → `uv run --script <file>`."""
+    os.environ["AGW_WORKDIR"] = tempfile.mkdtemp(prefix="agw-mcp-")
+    from agw_mcp import server
+
+    assert server.PACKAGED is True and server.self_command() == "uvx sota-agw-mcp"
+    plugin_mod = load_plugin(os.environ["AGW_WORKDIR"])
+    assert plugin_mod.PACKAGED is False and plugin_mod.self_command().startswith("uv run --script ")

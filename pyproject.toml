@@ -1,25 +1,57 @@
 [project]
 name = "sota-agw-mcp"
-version = "0.8.0"
-description = "SOTA Agentic Gateway — lõi dùng chung (agw_core), remote MCP cho API SaaS (agw_remote_mcp) và Claude plugin / MCP cục bộ"
+version = "0.9.0"
+description = "SOTA Agentic Gateway MCP server — email & message intake for logistics / trade: triage, attachment extraction, yellow-highlight templates, knowledge search, drafts sent only after human confirmation"
 readme = "README.md"
 requires-python = ">=3.11"
-# agw_core chỉ import thư viện ngoài khi cần (lười) → gói gốc không bắt buộc phụ thuộc nào
-dependencies = []
+license = "LicenseRef-SOTA-Commercial"
+license-files = ["LICENSE"]
+authors = [{ name = "SOTA Agentic Gateway" }]
+keywords = ["mcp", "model-context-protocol", "claude", "email", "imap", "logistics", "human-in-the-loop"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Email",
+]
+# = khối `# /// script` đầu agw_mcp/server.py (bản plugin) — test kiểm hai nơi khớp nhau
+dependencies = [
+    "mcp>=2.3,<3",
+    "requests>=2.31",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+    "pdfplumber>=0.11",
+    "beautifulsoup4>=4.12",
+]
 
 [project.optional-dependencies]
-docs = ["python-docx>=1.1", "openpyxl>=3.1", "pdfplumber>=0.11", "beautifulsoup4>=4.12"]
-remote = ["mcp>=2.3,<3"]
+remote = []  # giữ cho SaaS ghim `sota-agw-mcp[remote]` — mọi phụ thuộc đã ở trên
+
+[project.scripts]
+sota-agw-mcp = "agw_mcp.server:cli"
+
+[project.urls]
+Homepage = "https://github.com/thanhtrung665/gateway-agent-mcp"
+Repository = "https://github.com/thanhtrung665/gateway-agent-mcp"
+Issues = "https://github.com/thanhtrung665/gateway-agent-mcp/issues"
 
 [dependency-groups]
-dev = ["pytest>=9.2", "ruff>=0.9", "requests>=2.31"]  # requests: plugin agw_mcp.py (PEP 723). Cài kèm extra: uv sync --all-extras
+dev = ["pytest>=9.2", "ruff>=0.9"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["agw_core", "agw_remote_mcp"]
+packages = ["agw_core", "agw_remote_mcp", "agw_mcp"]
+
+[tool.hatch.build.targets.sdist]
+# chỉ mã gói + giấy phép (plugin, CI, test cần cả repo — lấy ở GitHub)
+include = ["/agw_core", "/agw_remote_mcp", "/agw_mcp", "/README.md", "/LICENSE", "/pyproject.toml"]
 
 [tool.ruff]
 line-length = 120

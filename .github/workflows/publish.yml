@@ -1,0 +1,55 @@
+# Phát hành gói `sota-agw-mcp` lên PyPI bằng Trusted Publishing (OIDC — không lưu token trong repo).
+# Cấu hình 1 lần trên pypi.org (và test.pypi.org): Publishing → Add a pending publisher →
+#   project sota-agw-mcp · owner thanhtrung665 · repo gateway-agent-mcp · workflow publish.yml · environment pypi / testpypi
+# Chạy: tag `vX.Y.Z` (phải khớp version trong pyproject.toml) → PyPI. Thử trước: Actions → Publish → Run workflow → TestPyPI.
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.12
+      - run: uv run ruff check .
+      - run: python scripts/sync_plugin_core.py --check
+      - run: uv run pytest -q
+      - name: Tag khớp version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          test "v$v" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} ≠ version $v"; exit 1; }
+      - run: uv build
+      - run: uvx twine check dist/*
+      - name: Chạy thử wheel qua stdio (môi trường sạch)
+        run: uv run python scripts/smoke_stdio.py uvx --isolated --from "$(ls dist/*.whl)" sota-agw-mcp
+      - uses: actions/upload-artifact@v4
+        with: { name: dist, path: dist/ }
+
+  testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions: { id-token: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist/ }
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with: { repository-url: "https://test.pypi.org/legacy/" }
+
+  pypi:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions: { id-token: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist/ }
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -11,9 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --all-extras --python 3.12
+      - run: uv sync --python 3.12
       - run: uv run ruff check .
       - run: python scripts/sync_plugin_core.py --check
       - run: uv run pytest -q
       - name: Plugin chạy độc lập (uv run --script, phụ thuộc PEP 723)
         run: cd /tmp && AGW_WORKDIR=/tmp/agw uv run --quiet --script $GITHUB_WORKSPACE/plugin/sota-agentic-gateway/server/agw_mcp.py check
+      - name: Build + chạy thử wheel qua stdio
+        run: uv build && uvx twine check dist/* && uv run python scripts/smoke_stdio.py uvx --isolated --from "$(ls dist/*.whl)" sota-agw-mcp

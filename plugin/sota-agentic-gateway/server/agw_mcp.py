@@ -17,7 +17,7 @@ Hai nhóm công cụ, bật theo cấu hình:
    hộp thư IMAP (liệt kê / đọc / trích chữ file đính kèm, kèm cảnh báo luật G01 quảng cáo + G02 an ninh), đọc file
    .eml/.pdf/.docx/.xlsx trong thư mục làm việc, template tô vàng (xem trường → điền → file mới), tìm trong thư mục
    tri thức (BM25 bỏ dấu), soạn nháp (.eml) và GỬI nháp qua SMTP — **chỉ sau khi người dùng xác nhận** trong hộp thoại
-   của client (MCP elicitation) hoặc bằng lệnh terminal `agw_mcp.py send <draft_id>`.
+   của client (MCP elicitation) hoặc bằng lệnh terminal `sota-agw-mcp send <draft_id>`.
 2. **SaaS** (khi có `AGW_API_URL` + `AGW_API_KEY`): hộp thư hợp nhất của workspace, phân tích, tri thức, truy vấn
    nguồn dữ liệu, template, playbook, dashboard. Gửi phản hồi = TẠO YÊU CẦU DUYỆT — người duyệt bấm trên web.
    Không có công cụ duyệt (API key không được ra quyết định duyệt — server chặn).
@@ -25,7 +25,11 @@ Hai nhóm công cụ, bật theo cấu hình:
 Bất biến: không công cụ nào tự gửi email / ghi dữ liệu ra ngoài mà không qua người. Đọc file chỉ trong
 `AGW_WORKDIR` (chống prompt injection trong email lừa đọc ~/.ssh rồi gửi đi).
 
-Chạy: `uv run --script agw_mcp.py` (stdio). Lệnh phụ: `agw_mcp.py send <draft_id>` · `agw_mcp.py check`.
+Chạy (stdio): `uvx sota-agw-mcp` (gói PyPI) hoặc `uv run --script agw_mcp.py` (bản chép trong Claude plugin).
+Lệnh phụ: `… send <draft_id>` · `… check`.
+
+NGUỒN DUY NHẤT: `agw_mcp/server.py` của repo gateway-agent-mcp. `plugin/sota-agentic-gateway/server/agw_mcp.py` là BẢN
+CHÉP y hệt (`python scripts/sync_plugin_core.py`) — khối `# /// script` ở đầu file chỉ dùng cho bản plugin.
 """
 from __future__ import annotations
 
@@ -43,7 +47,12 @@ from email.utils import formatdate, make_msgid
 from pathlib import Path
 from typing import Annotated, Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # agw_core đi kèm plugin
+try:  # gói đã cài (PyPI / uvx): agw_core là phụ thuộc
+    import agw_core  # noqa: F401
+    PACKAGED = __package__ == "agw_mcp"
+except ImportError:  # bản plugin (uv run --script): agw_core đi kèm cạnh file
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    PACKAGED = False
 
 from mcp.server.mcpserver import (  # noqa: E402
     AcceptedElicitation,
@@ -60,7 +69,7 @@ from agw_core import __version__ as CORE_VERSION  # noqa: E402
 from agw_core import doctext, rules, saas_tools, templates, textsearch  # noqa: E402
 from agw_core.email_parse import ParsedEmail, parse_email  # noqa: E402
 
-VERSION = "0.7.0"
+VERSION = "0.9.0"
 MAX_BODY_CHARS = 20_000
 MAX_FILE_BYTES = 25 * 1024 * 1024
 SEND_MODES = ("elicit", "cli", "disabled")
@@ -597,7 +606,8 @@ def build_server() -> MCPServer:
             if CFG.send_mode == "disabled":
                 return {"sent": False, "reason": confirm.data.reason, "draft_file": str(_draft_path(draft_id))}
             return {"sent": False, "reason": confirm.data.reason,
-                    "command": f"uv run --script {Path(__file__).resolve()} send {draft_id}", "preview": draft_preview(d)}
+                    "command": f"{self_command()} send {draft_id}", "workdir": str(CFG.workdir),
+                    "preview": draft_preview(d)}
         if not confirm.data.send:
             return {"sent": False, "reason": "Người dùng không đánh dấu xác nhận gửi"}
         if draft_preview(d) != confirm_digest_source(draft_id):
@@ -674,6 +684,11 @@ def cli_check() -> int:
     return 0
 
 
+def self_command() -> str:
+    """Lệnh terminal chạy lại chính server này (cho bước gửi xác nhận bằng tay) — cần cùng biến môi trường AGW_*."""
+    return "uvx sota-agw-mcp" if PACKAGED else f"uv run --script {Path(__file__).resolve()}"
+
+
 def main(argv: list[str]) -> int:
     if len(argv) >= 3 and argv[1] == "send":
         return cli_send(argv[2])
@@ -683,5 +698,10 @@ def main(argv: list[str]) -> int:
     return 0
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """Entry point `sota-agw-mcp` (pyproject `[project.scripts]`)."""
     sys.exit(main(sys.argv))
+
+
+if __name__ == "__main__":
+    cli()

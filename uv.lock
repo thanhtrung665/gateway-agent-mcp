@@ -1289,41 +1289,37 @@ wheels = [
 
 [[package]]
 name = "sota-agw-mcp"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "." }
-
-[package.optional-dependencies]
-docs = [
+dependencies = [
     { name = "beautifulsoup4" },
+    { name = "mcp" },
     { name = "openpyxl" },
     { name = "pdfplumber" },
     { name = "python-docx" },
-]
-remote = [
-    { name = "mcp" },
+    { name = "requests" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
-    { name = "requests" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "beautifulsoup4", marker = "extra == 'docs'", specifier = ">=4.12" },
-    { name = "mcp", marker = "extra == 'remote'", specifier = ">=2.3,<3" },
-    { name = "openpyxl", marker = "extra == 'docs'", specifier = ">=3.1" },
-    { name = "pdfplumber", marker = "extra == 'docs'", specifier = ">=0.11" },
-    { name = "python-docx", marker = "extra == 'docs'", specifier = ">=1.1" },
+    { name = "beautifulsoup4", specifier = ">=4.12" },
+    { name = "mcp", specifier = ">=2.3,<3" },
+    { name = "openpyxl", specifier = ">=3.1" },
+    { name = "pdfplumber", specifier = ">=0.11" },
+    { name = "python-docx", specifier = ">=1.1" },
+    { name = "requests", specifier = ">=2.31" },
 ]
-provides-extras = ["docs", "remote"]
+provides-extras = ["remote"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=9.2" },
-    { name = "requests", specifier = ">=2.31" },
     { name = "ruff", specifier = ">=0.9" },
 ]
 
