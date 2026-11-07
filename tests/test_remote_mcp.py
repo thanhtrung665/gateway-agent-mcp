@@ -13,18 +13,19 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from agw_remote_mcp import RemoteMCP, build_server
+from agw_remote_mcp import INTERNAL_SCOPE_KEY, RemoteMCP, build_server
 
 KEY, TRIAL_KEY = "agw_acme0001_secret", "agw_trial001_secret"
 SHARED_TOOLS = {"saas_inbox_list", "saas_inbox_get", "saas_analyze", "saas_save_reply_draft", "saas_request_reply",
                 "saas_approvals", "saas_knowledge_search", "saas_connections", "saas_query", "saas_query_catalog",
                 "saas_templates", "saas_fill_template", "saas_playbooks", "saas_dashboard"}
-SEEN: list[tuple[str, str, str]] = []
+PRM = "http://agw.test/.well-known/oauth-protected-resource/mcp"
+SEEN: list[tuple[str, str, str, bool]] = []
 
 
 def _auth(request: Request) -> Response | None:
     token = request.headers.get("authorization", "")
-    SEEN.append((request.method, request.url.path, token))
+    SEEN.append((request.method, request.url.path, token, bool(request.scope.get(INTERNAL_SCOPE_KEY))))
     if token == f"Bearer {TRIAL_KEY}":
         return JSONResponse({"detail": "Gói hiện tại không gồm truy cập API / MCP"}, 402)
     if token != f"Bearer {KEY}":
@@ -57,7 +58,7 @@ api = Starlette(routes=[
     Route("/api/v1/inbox", inbox),
     Route("/api/v1/inbox/{item_id}", inbox_item),
     Route("/api/v1/inbox/{item_id}/reply-requests", reply_requests, methods=["POST"]),
-    Route("/mcp", endpoint=RemoteMCP(), methods=["GET", "POST", "DELETE"]),
+    Route("/mcp", endpoint=RemoteMCP(resource_metadata_url=PRM), methods=["GET", "POST", "DELETE"]),
 ])
 
 
@@ -86,9 +87,13 @@ def _text(result) -> dict:
 def test_auth_is_required_and_api_errors_pass_through():
     async def run():
         r = await _post_mcp(None)
-        assert r.status_code == 401 and "bearer" in r.headers.get("www-authenticate", "").lower()
-        assert (await _post_mcp("session-token-web")).status_code == 401, "chỉ nhận dạng API key"
-        assert (await _post_mcp("agw_unknown1_secret")).status_code == 401, "API trả 401 → MCP trả 401"
+        www = r.headers.get("www-authenticate", "")
+        assert r.status_code == 401 and www.lower().startswith("bearer") and f'resource_metadata="{PRM}"' in www, www
+        assert "error=" not in www, "chưa gửi token → không kèm error (RFC 6750 §3)"
+        r = await _post_mcp("session-token-web")
+        assert r.status_code == 401 and 'error="invalid_token"' in r.headers["www-authenticate"], "chỉ nhận dạng API key"
+        r = await _post_mcp("agw_unknown1_secret")
+        assert r.status_code == 401 and f'resource_metadata="{PRM}"' in r.headers["www-authenticate"], "API 401 → MCP 401"
         r = await _post_mcp(TRIAL_KEY)
         assert r.status_code == 402 and "MCP" in r.json()["detail"], "gói không có API → 402"
 
@@ -113,7 +118,8 @@ def test_tools_forward_caller_token_and_hitl_note():
     asyncio.run(run("legacy"))
     asyncio.run(run("auto"))
     api_calls = [s for s in SEEN if s[1] != "/api/v1/me"]
-    assert api_calls and all(tok == f"Bearer {KEY}" for _, _, tok in api_calls), "mọi lời gọi API mang token người gọi"
+    assert api_calls and all(tok == f"Bearer {KEY}" for _, _, tok, _ in api_calls), "mọi lời gọi API mang token người gọi"
+    assert all(marked for *_, marked in SEEN), "lời gọi nội bộ mang dấu scope agw.remote_mcp"
 
 
 def test_remote_and_plugin_share_tool_definitions():

@@ -7,7 +7,7 @@ Phần **MCP / plugin** của SOTA Agentic Gateway: cổng tiếp nhận & phả
 | Thư mục | Nội dung |
 |---|---|
 | [`agw_core/`](agw_core/) | Lõi dùng chung, thuần Python: tách email RFC 822, luật G01 quảng cáo / G02 an ninh, BM25 + RRF, trích chữ file, template tô vàng, **định nghĩa công cụ SaaS** (`saas_tools.py`) |
-| [`agw_remote_mcp/`](agw_remote_mcp/) | **Remote MCP** — endpoint ASGI `/mcp` (Streamable HTTP, stateless) mà API SaaS gắn vào; công cụ gọi lại REST `/api/v1` của chính API bằng token người gọi |
+| [`agw_remote_mcp/`](agw_remote_mcp/) | **Remote MCP** — endpoint ASGI `/mcp` (Streamable HTTP, stateless) mà API SaaS gắn vào; công cụ gọi lại REST `/api/v1` của chính API bằng token người gọi (lời gọi mang dấu scope `agw.remote_mcp`). Hỗ trợ OAuth: 401 kèm `resource_metadata` (RFC 9728) — máy chủ uỷ quyền nằm ở API SaaS |
 | [`plugin/sota-agentic-gateway/`](plugin/sota-agentic-gateway/README.md) | **Claude plugin + MCP cục bộ** (`server/agw_mcp.py`, stdio): IMAP chỉ đọc, file, template, tri thức thư mục, nháp + gửi SMTP **chỉ sau khi bạn xác nhận**; nối workspace SaaS bằng API key. 5 skill |
 | `.claude-plugin/marketplace.json` | Marketplace của plugin (phải ở gốc repo) |
 

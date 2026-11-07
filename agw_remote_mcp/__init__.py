@@ -12,8 +12,12 @@ SaaS gắn vào app của mình (`app/saas/mcp_remote.py` của repo `agentic-ga
   token của người gọi → mọi lớp kiểm (tenant, vai trò, gói, giới hạn tốc độ, audit, HITL) nằm ở API, không lặp ở đây.
 - Stateless: mỗi request dựng server + session manager riêng (hợp serverless, hàm ≤ 60 s). Token nằm trong closure của
   request — không có trạng thái chung giữa các request.
-- Trước khi phục vụ: `accept_token(token)` (lọc dạng token, vd chỉ API key) rồi `GET {me_path}` phải 200; lỗi → trả
-  nguyên mã (401 kèm `WWW-Authenticate`, 402 gói, 403, 429 kèm `Retry-After`).
+- Trước khi phục vụ: `accept_token(token)` (lọc dạng token: API key `agw_…`, token OAuth…) rồi `GET {me_path}` phải 200;
+  lỗi → trả nguyên mã (401 kèm `WWW-Authenticate`, 402 gói, 403, 429 kèm `Retry-After`).
+- OAuth (MCP authorization): `resource_metadata_url` → header 401 có `resource_metadata="…"` (RFC 9728) để client tự tìm
+  máy chủ uỷ quyền. Máy chủ uỷ quyền + kiểm token nằm ở API (SaaS), không ở gói này.
+- Lời gọi REST nội bộ mang dấu `scope["agw.remote_mcp"] = True` (ASGI scope — client bên ngoài không đặt được) → API có
+  thể chỉ nhận một loại token (vd token OAuth cấp cho tài nguyên `/mcp`) khi lời gọi đi qua remote MCP.
 - Không có công cụ duyệt; công cụ cần elicitation (`saas_run_playbook`) không có ở remote.
 
 Cần extra `remote` (`mcp>=2.3,<3`, kéo theo `httpx2`, `starlette`).
@@ -33,14 +37,14 @@ from mcp.types import ToolAnnotations
 
 from agw_core import saas_tools
 
-__all__ = ["RemoteMCP", "build_server", "VERSION"]
+__all__ = ["INTERNAL_SCOPE_KEY", "RemoteMCP", "build_server", "mark_internal", "VERSION"]
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 INTERNAL_BASE = "http://agw-internal"  # ASGITransport — không phân giải DNS, không ra mạng
 USER_AGENT = f"agw-remote-mcp/{VERSION}"
 _RO = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 _REQ = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True)
-_WWW_AUTH = (b"www-authenticate", b'Bearer realm="sota-agentic-gateway"')
+INTERNAL_SCOPE_KEY = "agw.remote_mcp"
 
 log = logging.getLogger(__name__)
 # Mỗi request dựng 1 session manager → SDK log "started/shutting down" 2 dòng INFO mỗi lần gọi: hạ xuống WARNING
@@ -74,6 +78,13 @@ def _guard(fn: Any) -> Any:
     return w
 
 
+def mark_internal(app: Any) -> Any:
+    """Bọc app: mọi lời gọi nội bộ từ remote MCP mang `scope[INTERNAL_SCOPE_KEY] = True`."""
+    async def wrapped(scope: dict[str, Any], receive: Any, send: Any) -> None:
+        await app({**scope, INTERNAL_SCOPE_KEY: True}, receive, send)
+    return wrapped
+
+
 def build_server(http: httpx2.AsyncClient, *, api_prefix: str = "/api/v1") -> MCPServer:
     """MCP server với công cụ SaaS; `http` = client đã gắn token + transport tới API."""
     async def call(method: str, path: str, *, params: dict | None = None, body: dict | None = None) -> Any:
@@ -100,21 +111,30 @@ class RemoteMCP:
     """ASGI endpoint `/mcp`. `accept_token`: lọc dạng token được nhận (mặc định: API key `agw_…`)."""
 
     def __init__(self, *, accept_token: Callable[[str], bool] | None = None, api_prefix: str = "/api/v1",
-                 me_path: str = "/api/v1/me") -> None:
+                 me_path: str = "/api/v1/me", resource_metadata_url: str | None = None) -> None:
         self.accept_token = accept_token or (lambda t: t.startswith("agw_") and t.count("_") >= 2)
         self.api_prefix = api_prefix
         self.me_path = me_path
+        self.resource_metadata_url = resource_metadata_url
+
+    def _www_authenticate(self, error: str | None = None) -> tuple[bytes, bytes]:
+        parts = ['Bearer realm="sota-agentic-gateway"']
+        if error:
+            parts.append(f'error="{error}"')
+        if self.resource_metadata_url:
+            parts.append(f'resource_metadata="{self.resource_metadata_url}"')
+        return b"www-authenticate", ", ".join(parts).encode("latin-1")
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope["type"] != "http":
             return
         token = _bearer(scope)
         if not token or not self.accept_token(token):
-            await _reply(send, 401, "Cần API key SOTA Agentic Gateway (Cài đặt → API key) trong header "
-                                    "Authorization: Bearer agw_…", [_WWW_AUTH])
+            await _reply(send, 401, "Cần đăng nhập SOTA Agentic Gateway (OAuth) hoặc API key (Cài đặt → API key) trong "
+                                    "header Authorization: Bearer …", [self._www_authenticate("invalid_token" if token else None)])
             return
         # Gọi lại chính app đang phục vụ (scope["app"]) → cùng middleware, cùng dependency override khi test
-        transport = httpx2.ASGITransport(app=scope["app"])
+        transport = httpx2.ASGITransport(app=mark_internal(scope["app"]))
         async with httpx2.AsyncClient(transport=transport, base_url=INTERNAL_BASE, timeout=60,
                                       headers={"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}) as http:
             me = await http.get(self.me_path)  # key hợp lệ? workspace hoạt động? gói có API? giới hạn tốc độ?
@@ -123,7 +143,7 @@ class RemoteMCP:
                     detail = str(me.json().get("detail") or me.reason_phrase)
                 except (ValueError, AttributeError):
                     detail = me.reason_phrase
-                extra = [_WWW_AUTH] if me.status_code == 401 else []
+                extra = [self._www_authenticate("invalid_token")] if me.status_code == 401 else []
                 if me.status_code == 429:
                     extra.append((b"retry-after", me.headers.get("retry-after", "10").encode()))
                 await _reply(send, me.status_code, detail, extra)

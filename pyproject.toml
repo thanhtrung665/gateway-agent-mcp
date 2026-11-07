@@ -1,6 +1,6 @@
 [project]
 name = "sota-agw-mcp"
-version = "0.7.0"
+version = "0.8.0"
 description = "SOTA Agentic Gateway — lõi dùng chung (agw_core), remote MCP cho API SaaS (agw_remote_mcp) và Claude plugin / MCP cục bộ"
 readme = "README.md"
 requires-python = ">=3.11"
