@@ -1,0 +1,74 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "sota-agentic-gateway",
+  "version": "0.7.0",
+  "description": "Email & message intake for logistics, supply chain and trade: triage inbox (ad/fraud rules), extract text from attachments, fill yellow-highlighted DOCX/XLSX templates, search your knowledge folder, draft replies and send only after you confirm. Optional connection to the SOTA Agentic Gateway SaaS workspace.",
+  "author": {
+    "name": "SOTA Agentic Gateway"
+  },
+  "homepage": "https://github.com/thanhtrung665/gateway-agent-mcp",
+  "repository": "https://github.com/thanhtrung665/gateway-agent-mcp",
+  "license": "LicenseRef-SOTA-Commercial",
+  "keywords": [
+    "email",
+    "imap",
+    "logistics",
+    "supply-chain",
+    "templates",
+    "hitl",
+    "mcp"
+  ],
+  "userConfig": {
+    "workdir": {
+      "type": "directory",
+      "title": "Thư mục làm việc",
+      "description": "Nơi chứa templates/, knowledge/, output/, drafts/. Plugin chỉ đọc/ghi file trong thư mục này. Mặc định ~/SOTA-Agentic-Gateway",
+      "required": false
+    },
+    "imap_host": {
+      "type": "string",
+      "title": "IMAP host",
+      "description": "vd imap.gmail.com, outlook.office365.com (để trống nếu không dùng hộp thư cục bộ)",
+      "required": false
+    },
+    "imap_user": {
+      "type": "string",
+      "title": "Email đăng nhập",
+      "description": "Địa chỉ email / tài khoản IMAP",
+      "required": false
+    },
+    "imap_password": {
+      "type": "string",
+      "title": "Mật khẩu ứng dụng",
+      "description": "App Password của Gmail / Outlook (không dùng mật khẩu chính)",
+      "required": false,
+      "sensitive": true
+    },
+    "smtp_host": {
+      "type": "string",
+      "title": "SMTP host",
+      "description": "vd smtp.gmail.com, smtp.office365.com (cổng 587 STARTTLS)",
+      "required": false
+    },
+    "send_mode": {
+      "type": "string",
+      "title": "Chế độ gửi",
+      "description": "elicit = hỏi xác nhận trong client (mặc định) · cli = chỉ gửi bằng lệnh terminal · disabled = không gửi",
+      "required": false,
+      "default": "elicit"
+    },
+    "api_url": {
+      "type": "string",
+      "title": "SaaS API URL",
+      "description": "URL API của SOTA Agentic Gateway (để trống nếu chỉ dùng cục bộ)",
+      "required": false
+    },
+    "api_key": {
+      "type": "string",
+      "title": "SaaS API key",
+      "description": "agw_… tạo ở Cài đặt → API key (vai trò MEMBER là đủ)",
+      "required": false,
+      "sensitive": true
+    }
+  }
+}

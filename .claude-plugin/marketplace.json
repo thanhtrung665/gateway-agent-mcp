@@ -1,0 +1,13 @@
+{
+  "name": "sota-agentic-gateway",
+  "owner": { "name": "SOTA Agentic Gateway" },
+  "metadata": { "description": "SOTA Agentic Gateway plugins for Claude" },
+  "plugins": [
+    {
+      "name": "sota-agentic-gateway",
+      "source": "./plugin/sota-agentic-gateway",
+      "description": "Email & message intake for logistics and trade: triage, attachment extraction, yellow-highlight templates, knowledge search, drafts sent only after confirmation; optional SaaS workspace.",
+      "version": "0.7.0"
+    }
+  ]
+}
