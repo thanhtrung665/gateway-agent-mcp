@@ -288,7 +288,17 @@ def file_type_of(file_name: str) -> str:
     return ext
 
 
+def _guard(data: bytes) -> None:
+    from agw_core.safezip import UnsafeArchive, check_zip
+
+    try:
+        check_zip(data)
+    except UnsafeArchive as e:
+        raise TemplateError(str(e)) from e
+
+
 def extract_fields(file_type: str, data: bytes) -> list[dict[str, Any]]:
+    _guard(data)
     try:
         fields = extract_docx(data) if file_type == "docx" else extract_xlsx(data)
     except TemplateError:
@@ -302,6 +312,7 @@ def extract_fields(file_type: str, data: bytes) -> list[dict[str, Any]]:
 
 
 def fill(file_type: str, data: bytes, values: dict[str, Any], clear_highlight: bool = True) -> bytes:
+    _guard(data)
     return fill_docx(data, values, clear_highlight) if file_type == "docx" else fill_xlsx(data, values, clear_highlight)
 
 

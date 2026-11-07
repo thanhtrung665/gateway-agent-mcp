@@ -21,11 +21,13 @@ SHARED_TOOLS = {"saas_inbox_list", "saas_inbox_get", "saas_analyze", "saas_save_
                 "saas_templates", "saas_fill_template", "saas_playbooks", "saas_dashboard"}
 PRM = "http://agw.test/.well-known/oauth-protected-resource/mcp"
 SEEN: list[tuple[str, str, str, bool]] = []
+IPS: list[tuple[str, str | None]] = []  # (client.host, x-real-ip) API nhìn thấy
 
 
 def _auth(request: Request) -> Response | None:
     token = request.headers.get("authorization", "")
     SEEN.append((request.method, request.url.path, token, bool(request.scope.get(INTERNAL_SCOPE_KEY))))
+    IPS.append((request.client.host if request.client else "", request.headers.get("x-real-ip")))
     if token == f"Bearer {TRIAL_KEY}":
         return JSONResponse({"detail": "Gói hiện tại không gồm truy cập API / MCP"}, 402)
     if token != f"Bearer {KEY}":
@@ -141,3 +143,20 @@ def test_remote_and_plugin_share_tool_definitions():
     for name in SHARED_TOOLS:
         assert local[name].description == remote[name].description, name
         assert local[name].input_schema == remote[name].input_schema, name
+
+
+def test_internal_calls_keep_caller_address():
+    """Rate limit / chống dò theo IP ở API phải thấy IP người gọi /mcp — không phải 1 địa chỉ nội bộ chung."""
+    IPS.clear()
+
+    async def run():
+        transport = httpx2.ASGITransport(app=api, client=("203.0.113.7", 5000))
+        async with httpx2.AsyncClient(transport=transport, base_url="http://agw.test") as c:
+            r = await c.post("/mcp", headers={"authorization": f"Bearer {KEY}", "content-type": "application/json",
+                                              "accept": "application/json, text/event-stream",
+                                              "x-real-ip": "198.51.100.9"},
+                             content=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}))
+            assert r.status_code == 200, r.text
+
+    asyncio.run(run())
+    assert IPS and all(ip == ("203.0.113.7", "198.51.100.9") for ip in IPS), IPS

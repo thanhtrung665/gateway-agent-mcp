@@ -39,6 +39,13 @@ def _decode(data: bytes) -> str:
 
 def extract_text(data: bytes, name: str = "") -> str:
     kind = kind_of(data, name)
+    if kind in ("docx", "xlsx", "zip"):
+        from agw_core.safezip import UnsafeArchive, check_zip
+
+        try:
+            check_zip(data)
+        except UnsafeArchive as e:
+            raise UnsupportedFile(f"{name}: {e}") from e
     if kind == "pdf":
         import pdfplumber
 

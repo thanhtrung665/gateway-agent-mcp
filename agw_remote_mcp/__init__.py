@@ -18,6 +18,8 @@ SaaS gắn vào app của mình (`app/saas/mcp_remote.py` của repo `agentic-ga
   máy chủ uỷ quyền. Máy chủ uỷ quyền + kiểm token nằm ở API (SaaS), không ở gói này.
 - Lời gọi REST nội bộ mang dấu `scope["agw.remote_mcp"] = True` (ASGI scope — client bên ngoài không đặt được) → API có
   thể chỉ nhận một loại token (vd token OAuth cấp cho tài nguyên `/mcp`) khi lời gọi đi qua remote MCP.
+- Lời gọi nội bộ giữ ĐỊA CHỈ CLIENT GỐC (`scope["client"]`) + header IP của request ngoài (`FORWARD_IP_HEADERS`) → giới
+  hạn tốc độ / chống dò theo IP ở API tính đúng người gọi, không dồn mọi người dùng /mcp vào 1 "IP" nội bộ.
 - Không có công cụ duyệt; công cụ cần elicitation (`saas_run_playbook`) không có ở remote.
 
 Cần extra `remote` (`mcp>=2.3,<3`, kéo theo `httpx2`, `starlette`).
@@ -37,14 +39,16 @@ from mcp.types import ToolAnnotations
 
 from agw_core import prompts, saas_tools
 
-__all__ = ["INTERNAL_SCOPE_KEY", "RemoteMCP", "build_server", "mark_internal", "VERSION"]
+__all__ = ["FORWARD_IP_HEADERS", "INTERNAL_SCOPE_KEY", "RemoteMCP", "build_server", "mark_internal", "VERSION"]
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 INTERNAL_BASE = "http://agw-internal"  # ASGITransport — không phân giải DNS, không ra mạng
 USER_AGENT = f"agw-remote-mcp/{VERSION}"
 _RO = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 _REQ = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True)
 INTERNAL_SCOPE_KEY = "agw.remote_mcp"
+# header IP do proxy / CDN đặt (vd Vercel x-real-ip) — chép sang lời gọi nội bộ; API tự quyết có tin hay không
+FORWARD_IP_HEADERS = (b"x-real-ip", b"x-forwarded-for")
 
 log = logging.getLogger(__name__)
 # Mỗi request dựng 1 session manager → SDK log "started/shutting down" 2 dòng INFO mỗi lần gọi: hạ xuống WARNING
@@ -134,10 +138,16 @@ class RemoteMCP:
             await _reply(send, 401, "Cần đăng nhập SOTA Agentic Gateway (OAuth) hoặc API key (Cài đặt → API key) trong "
                                     "header Authorization: Bearer …", [self._www_authenticate("invalid_token" if token else None)])
             return
-        # Gọi lại chính app đang phục vụ (scope["app"]) → cùng middleware, cùng dependency override khi test
-        transport = httpx2.ASGITransport(app=mark_internal(scope["app"]))
+        # Gọi lại chính app đang phục vụ (scope["app"]) → cùng middleware, cùng dependency override khi test.
+        # Giữ địa chỉ client + header IP gốc → rate limit / chống dò theo IP ở API tính đúng người gọi.
+        client = tuple(scope["client"]) if scope.get("client") else ("127.0.0.1", 0)
+        transport = httpx2.ASGITransport(app=mark_internal(scope["app"]), client=client)
+        headers = {"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}
+        for k, v in scope.get("headers") or []:
+            if k in FORWARD_IP_HEADERS:
+                headers[k.decode("latin-1")] = v.decode("latin-1")
         async with httpx2.AsyncClient(transport=transport, base_url=INTERNAL_BASE, timeout=60,
-                                      headers={"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}) as http:
+                                      headers=headers) as http:
             me = await http.get(self.me_path)  # key hợp lệ? workspace hoạt động? gói có API? giới hạn tốc độ?
             if me.status_code != 200:
                 try:

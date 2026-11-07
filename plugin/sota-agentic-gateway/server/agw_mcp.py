@@ -70,7 +70,7 @@ from agw_core import __version__ as CORE_VERSION  # noqa: E402
 from agw_core import doctext, prompts, rules, saas_tools, templates, textsearch  # noqa: E402
 from agw_core.email_parse import ParsedEmail, parse_email  # noqa: E402
 
-VERSION = "0.10.0"
+VERSION = "0.11.0"
 MAX_BODY_CHARS = 20_000
 MAX_FILE_BYTES = 25 * 1024 * 1024
 SEND_MODES = ("elicit", "cli", "disabled")

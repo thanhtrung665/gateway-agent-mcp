@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "sota-agentic-gateway-remote",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Connect Claude to your SOTA Agentic Gateway workspace over remote MCP (OAuth sign-in, nothing to install): unified inbox across email, Zalo, WhatsApp, Messenger, WeChat, AI analysis, knowledge base, data lookups, templates, playbooks. Every reply goes to a human approval queue.",
   "author": {
     "name": "SOTA Agentic Gateway"

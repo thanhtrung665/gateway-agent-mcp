@@ -6,4 +6,4 @@ Bản GỐC nằm ở repo `gateway-agent-mcp` (thư mục này). Dùng bởi:
 - MCP server của Claude Plugin — `plugin/sota-agentic-gateway/server/agw_core/` là BẢN SAO (plugin chạy độc lập bằng
   `uv run --script`), đồng bộ bằng `python scripts/sync_plugin_core.py`; test + CI kiểm hai bản giống hệt nhau.
 """
-__version__ = "0.10.0"
+__version__ = "0.11.0"

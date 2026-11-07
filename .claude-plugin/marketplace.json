@@ -11,13 +11,13 @@
       "name": "sota-agentic-gateway",
       "source": "./plugin/sota-agentic-gateway",
       "description": "Email & message intake for logistics and trade: triage, attachment extraction, yellow-highlight templates, knowledge search, drafts sent only after confirmation; optional SaaS workspace.",
-      "version": "0.10.0"
+      "version": "0.11.0"
     },
     {
       "name": "sota-agentic-gateway-remote",
       "source": "./plugin/sota-agentic-gateway-remote",
       "description": "Remote MCP to your SOTA Agentic Gateway workspace — OAuth sign-in, nothing to install; replies go to human approval.",
-      "version": "0.10.0"
+      "version": "0.11.0"
     }
   ]
 }
