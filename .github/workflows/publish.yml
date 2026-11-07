@@ -1,4 +1,5 @@
 # Phát hành gói `sota-agw-mcp` lên PyPI bằng Trusted Publishing (OIDC — không lưu token trong repo).
+# ⚠️ CHƯA DÙNG (2026-11-07: chỉ thử nghiệm nội bộ). Chưa có pending publisher → job đăng sẽ lỗi, không tải gì lên.
 # Cấu hình 1 lần trên pypi.org (và test.pypi.org): Publishing → Add a pending publisher →
 #   project sota-agw-mcp · owner thanhtrung665 · repo gateway-agent-mcp · workflow publish.yml · environment pypi / testpypi
 # Chạy: tag `vX.Y.Z` (phải khớp version trong pyproject.toml) → PyPI. Thử trước: tag `test-vX.Y.Z` hoặc

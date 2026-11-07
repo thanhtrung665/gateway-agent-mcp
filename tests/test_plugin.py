@@ -247,10 +247,11 @@ def test_package_metadata_matches_plugin_and_pep723():
 
 
 def test_send_command_matches_install_mode():
-    """Gói đã cài → lệnh xác nhận gửi bằng tay là `uvx sota-agw-mcp send …`; bản plugin → `uv run --script <file>`."""
+    """Gói đã cài → lệnh gửi bằng tay chạy đúng trình Python hiện tại (không tra PyPI); bản plugin → `uv run --script`."""
     os.environ["AGW_WORKDIR"] = tempfile.mkdtemp(prefix="agw-mcp-")
     from agw_mcp import server
 
-    assert server.PACKAGED is True and server.self_command() == "uvx sota-agw-mcp"
+    assert server.PACKAGED is True and server.self_command() == f'"{sys.executable}" -m agw_mcp'
+    assert "uvx" not in server.self_command(), "không tra PyPI — tên gói chưa đăng ký"
     plugin_mod = load_plugin(os.environ["AGW_WORKDIR"])
     assert plugin_mod.PACKAGED is False and plugin_mod.self_command().startswith("uv run --script ")

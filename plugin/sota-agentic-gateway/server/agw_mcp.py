@@ -25,7 +25,8 @@ Hai nhóm công cụ, bật theo cấu hình:
 Bất biến: không công cụ nào tự gửi email / ghi dữ liệu ra ngoài mà không qua người. Đọc file chỉ trong
 `AGW_WORKDIR` (chống prompt injection trong email lừa đọc ~/.ssh rồi gửi đi).
 
-Chạy (stdio): `uvx sota-agw-mcp` (gói PyPI) hoặc `uv run --script agw_mcp.py` (bản chép trong Claude plugin).
+Chạy (stdio): `uvx --from git+https://github.com/thanhtrung665/gateway-agent-mcp sota-agw-mcp` (CHƯA phát hành PyPI — chỉ nội bộ) hoặc
+`uv run --script agw_mcp.py` (bản chép trong Claude plugin).
 Lệnh phụ: `… send <draft_id>` · `… check`.
 
 NGUỒN DUY NHẤT: `agw_mcp/server.py` của repo gateway-agent-mcp. `plugin/sota-agentic-gateway/server/agw_mcp.py` là BẢN
@@ -685,8 +686,10 @@ def cli_check() -> int:
 
 
 def self_command() -> str:
-    """Lệnh terminal chạy lại chính server này (cho bước gửi xác nhận bằng tay) — cần cùng biến môi trường AGW_*."""
-    return "uvx sota-agw-mcp" if PACKAGED else f"uv run --script {Path(__file__).resolve()}"
+    """Lệnh terminal chạy lại CHÍNH bản server này (bước gửi xác nhận bằng tay) — cần cùng biến môi trường AGW_*.
+    Gói đã cài → đúng trình Python đang chạy (`-m agw_mcp`), KHÔNG `uvx sota-agw-mcp`: tên đó chưa đăng ký trên PyPI,
+    tra PyPI có thể chạy gói của người khác chiếm tên."""
+    return f'"{sys.executable}" -m agw_mcp' if PACKAGED else f"uv run --script {Path(__file__).resolve()}"
 
 
 def main(argv: list[str]) -> int:

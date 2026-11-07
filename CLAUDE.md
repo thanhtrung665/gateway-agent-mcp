@@ -20,7 +20,9 @@ dữ liệu khách). Kế hoạch / nhật ký chung vẫn ở repo SaaS (`SPEC.
 - Công cụ cần elicitation chỉ có ở MCP cục bộ (remote stateless không hỏi người dùng được).
 - **Một số phiên bản** cho cả repo — đổi cùng lúc 5 chỗ (test kiểm): `pyproject.toml` `version`, `VERSION` trong
   `agw_mcp/server.py`, `agw_core.__version__`, `plugin.json`, `marketplace.json`; rồi sync + `claude plugin validate`.
-- **Phát hành PyPI** (`sota-agw-mcp`): KHÔNG `uv publish` từ máy. Tag `vX.Y.Z` khớp version → `publish.yml` (Trusted
+- **Phát hành PyPI** (`sota-agw-mcp`) — **CHƯA phát hành, chỉ nội bộ (👤 chốt 2026-11-07); không tag `v*` / `test-v*`
+  khi chưa được chốt.** Không viết hướng dẫn / mã gọi `uvx sota-agw-mcp` không kèm `--from` (tên chưa đăng ký PyPI →
+  có thể cài gói chiếm tên). Khi được phép: KHÔNG `uv publish` từ máy. Tag `vX.Y.Z` khớp version → `publish.yml` (Trusted
   Publishing, environment `pypi`); thử trước bằng Run workflow → TestPyPI. Phiên bản đã lên PyPI không xoá / ghi đè được
   — tăng số mới khi sửa. Trước tag: `uv build` + `scripts/smoke_stdio.py` với wheel.
 - Trước commit: `uv run pytest -q`, `uv run ruff check .`, `scripts/sync_plugin_core.py --check`; đổi đóng gói → thêm

@@ -1,22 +1,26 @@
 # SOTA Agentic Gateway — MCP server & Claude plugin
 
+> **Thử nghiệm nội bộ — CHƯA phát hành lên PyPI.** Cài từ GitHub như bên dưới. Đừng dùng `uvx sota-agw-mcp` (không
+> `--from`): tên đó chưa đăng ký trên PyPI, lệnh sẽ tra PyPI và có thể cài gói của người khác.
+
 MCP server cho việc tiếp nhận & phản hồi email / tin nhắn trong logistics, chuỗi cung ứng, thương mại: phân loại hộp
 thư (luật quảng cáo / lừa đảo), trích chữ file đính kèm, điền template DOCX / XLSX tô vàng, tra thư mục tri thức, soạn
 nháp — và **chỉ gửi sau khi bạn xác nhận**. Tuỳ chọn nối workspace SaaS SOTA Agentic Gateway (gửi = tạo yêu cầu duyệt).
 
 - Không có công cụ nào tự gửi hay tự duyệt. Gửi email cục bộ cần bạn bấm xác nhận trong hộp thoại của client (MCP
-  elicitation); client không có hộp thoại → server trả lệnh terminal `uvx sota-agw-mcp send <draft_id>` để bạn tự chạy.
+  elicitation); client không có hộp thoại → server trả lệnh terminal (`… -m agw_mcp send <draft_id>`) để bạn tự chạy.
 - IMAP chỉ đọc. File chỉ đọc / ghi trong thư mục làm việc `AGW_WORKDIR`.
 - Nội dung email / file được coi là dữ liệu bên ngoài — không phải lệnh.
 
 ## Cài & chạy
 
-Cần [uv](https://docs.astral.sh/uv/). Không cần cài trước — client gọi `uvx sota-agw-mcp` (stdio).
+Cần [uv](https://docs.astral.sh/uv/). Client gọi `uvx --from git+https://github.com/thanhtrung665/gateway-agent-mcp sota-agw-mcp` (stdio) — uv tự tải từ GitHub.
+Muốn cố định phiên bản: thêm `@<commit>` hoặc `@<tag>` sau URL.
 
 **Claude Code**
 
 ```bash
-claude mcp add sota-agw -e AGW_WORKDIR=$HOME/SOTA-Agentic-Gateway -- uvx sota-agw-mcp
+claude mcp add sota-agw -e AGW_WORKDIR=$HOME/SOTA-Agentic-Gateway -- uvx --from git+https://github.com/thanhtrung665/gateway-agent-mcp sota-agw-mcp
 # hoặc cài plugin (có thêm 5 skill + ô cấu hình):
 claude plugin marketplace add thanhtrung665/gateway-agent-mcp
 claude plugin install sota-agentic-gateway@sota-agentic-gateway
@@ -29,7 +33,7 @@ claude plugin install sota-agentic-gateway@sota-agentic-gateway
   "mcpServers": {
     "sota-agw": {
       "command": "uvx",
-      "args": ["sota-agw-mcp"],
+      "args": ["--from", "git+https://github.com/thanhtrung665/gateway-agent-mcp", "sota-agw-mcp"],
       "env": {
         "AGW_WORKDIR": "/Users/ban/SOTA-Agentic-Gateway",
         "AGW_IMAP_HOST": "imap.gmail.com",
@@ -47,12 +51,12 @@ claude plugin install sota-agentic-gateway@sota-agentic-gateway
 ```json
 {
   "servers": {
-    "sota-agw": { "type": "stdio", "command": "uvx", "args": ["sota-agw-mcp"], "env": { "AGW_WORKDIR": "${userHome}/SOTA-Agentic-Gateway" } }
+    "sota-agw": { "type": "stdio", "command": "uvx", "args": ["--from", "git+https://github.com/thanhtrung665/gateway-agent-mcp", "sota-agw-mcp"], "env": { "AGW_WORKDIR": "${userHome}/SOTA-Agentic-Gateway" } }
   }
 }
 ```
 
-Kiểm cấu hình: `uvx sota-agw-mcp check` (in thư mục làm việc, thử đăng nhập IMAP / SaaS — không in mật khẩu).
+Kiểm cấu hình: `uvx --from git+https://github.com/thanhtrung665/gateway-agent-mcp sota-agw-mcp check` (in thư mục làm việc, thử đăng nhập IMAP / SaaS — không in mật khẩu).
 
 ## Cấu hình (biến môi trường)
 
@@ -102,7 +106,8 @@ claude plugin validate plugin/sota-agentic-gateway && claude plugin validate .
 `uv run --script`, phụ thuộc khai ở khối `# /// script` đầu file — test kiểm khớp `pyproject.toml`). Repo SaaS cài gói
 này qua git dependency ghim commit (`sota-agw-mcp[remote] @ git+https://github.com/thanhtrung665/gateway-agent-mcp@<commit>`).
 
-Phát hành PyPI: tag `vX.Y.Z` (khớp `version` trong `pyproject.toml`) → workflow `publish.yml` (Trusted Publishing).
+Phát hành PyPI (**chưa làm** — quyết định 2026-11-07: chỉ nội bộ): khi được chốt, tạo pending publisher trên pypi.org /
+test.pypi.org rồi tag `test-vX.Y.Z` (TestPyPI) → `vX.Y.Z` (PyPI) — workflow `publish.yml` (Trusted Publishing).
 
 ## Giấy phép
 

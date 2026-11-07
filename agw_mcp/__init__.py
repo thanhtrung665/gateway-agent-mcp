@@ -1,1 +1,1 @@
-"""SOTA Agentic Gateway — MCP server cục bộ (stdio). Chạy: `uvx sota-agw-mcp` · xem `agw_mcp.server`."""
+"""SOTA Agentic Gateway — MCP server cục bộ (stdio). Lệnh `sota-agw-mcp` / `python -m agw_mcp` · xem `agw_mcp.server`."""
