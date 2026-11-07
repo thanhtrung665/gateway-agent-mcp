@@ -2,7 +2,12 @@
   "mcpServers": {
     "sota-agentic-gateway": {
       "command": "uv",
-      "args": ["run", "--quiet", "--script", "${CLAUDE_PLUGIN_ROOT}/server/agw_mcp.py"],
+      "args": [
+        "run",
+        "--quiet",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/server/agw_mcp.py"
+      ],
       "env": {
         "AGW_WORKDIR": "${user_config.workdir}",
         "AGW_IMAP_HOST": "${user_config.imap_host}",

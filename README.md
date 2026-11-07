@@ -21,10 +21,22 @@ Muốn cố định phiên bản: thêm `@<commit>` hoặc `@<tag>` sau URL.
 
 ```bash
 claude mcp add sota-agw -e AGW_WORKDIR=$HOME/SOTA-Agentic-Gateway -- uvx --from git+https://github.com/thanhtrung665/gateway-agent-mcp sota-agw-mcp
-# hoặc cài plugin (có thêm 5 skill + ô cấu hình):
+# hoặc cài plugin (có thêm skill + ô cấu hình) — marketplace có 2 plugin, chọn theo chế độ:
 claude plugin marketplace add thanhtrung665/gateway-agent-mcp
-claude plugin install sota-agentic-gateway@sota-agentic-gateway
+claude plugin install sota-agentic-gateway@sota-agentic-gateway         # cục bộ: IMAP, file, template trên máy (cần uv)
+claude plugin install sota-agentic-gateway-remote@sota-agentic-gateway  # remote: workspace SaaS qua OAuth, không cài gì
 ```
+
+| Plugin | Chạy ở đâu | Công cụ | Đăng nhập |
+|---|---|---|---|
+| `sota-agentic-gateway` | máy bạn (`uv run --script`) | 11 công cụ cục bộ (+ `saas_*` nếu điền `api_url` + `api_key`), 5 skill | IMAP App Password / API key |
+| `sota-agentic-gateway-remote` | API SaaS `https://<api>/mcp` | 14 công cụ `saas_*`, skill `sota-saas` | OAuth trong `/mcp` |
+
+Cài cả hai được (vd hộp thư cục bộ + workspace); khi đó để trống `api_url` / `api_key` của plugin cục bộ để khỏi trùng
+công cụ `saas_*`.
+
+**Prompts** (client không có skill vẫn đi đúng quy trình duyệt): cục bộ `triage_local`, `reply_local`,
+`fill_template_local`; workspace `inbox_saas`, `reply_saas` — trong Claude Code gõ `/` để thấy.
 
 **Claude Desktop** (`claude_desktop_config.json`) · **Cursor** (`~/.cursor/mcp.json`)
 
@@ -99,7 +111,7 @@ uv run pytest -q                                   # plugin + gói + remote MCP 
 uv run ruff check .
 python -X utf8 scripts/sync_plugin_core.py         # sau khi sửa agw_core/ hoặc agw_mcp/server.py → chép vào plugin
 uv build && uv run python scripts/smoke_stdio.py uvx --isolated --from dist/<wheel> sota-agw-mcp
-claude plugin validate plugin/sota-agentic-gateway && claude plugin validate .
+claude plugin validate plugin/sota-agentic-gateway && claude plugin validate plugin/sota-agentic-gateway-remote && claude plugin validate .
 ```
 
 `plugin/sota-agentic-gateway/server/agw_mcp.py` là bản chép y hệt `agw_mcp/server.py` (plugin chạy bằng

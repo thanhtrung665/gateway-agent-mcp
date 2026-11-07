@@ -15,6 +15,9 @@ claude plugin marketplace add thanhtrung665/gateway-agent-mcp
 claude plugin install sota-agentic-gateway@sota-agentic-gateway
 ```
 
+Only need your SOTA Agentic Gateway workspace (no local mailbox / files)? Install
+`sota-agentic-gateway-remote@sota-agentic-gateway` instead: remote MCP with OAuth sign-in, nothing to run locally.
+
 Then open `/plugin`, choose **sota-agentic-gateway → Configure** and fill what you need (all optional):
 
 | Setting | What it is |

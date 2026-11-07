@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sota-agentic-gateway": {
+      "type": "http",
+      "url": "${user_config.remote_url}"
+    }
+  }
+}

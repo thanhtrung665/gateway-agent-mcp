@@ -21,6 +21,7 @@ from types import SimpleNamespace
 
 REPO = Path(__file__).resolve().parents[1]
 PLUGIN = REPO / "plugin" / "sota-agentic-gateway"
+REMOTE_PLUGIN = REPO / "plugin" / "sota-agentic-gateway-remote"
 
 
 def _docx_bytes() -> bytes:
@@ -237,8 +238,9 @@ def test_package_metadata_matches_plugin_and_pep723():
     market = json.loads((REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     import agw_core
 
-    versions = {py["version"], manifest["version"], market["plugins"][0]["version"], agw_core.__version__,
-                re.search(r'^VERSION = "([^"]+)"', src, re.M).group(1)}
+    remote = json.loads((REMOTE_PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    versions = {py["version"], manifest["version"], remote["version"], agw_core.__version__,
+                re.search(r'^VERSION = "([^"]+)"', src, re.M).group(1), *(x["version"] for x in market["plugins"])}
     assert len(versions) == 1, versions
     block = re.search(r"^# /// script\n(.*?)^# ///$", src, re.M | re.S).group(1)
     pep723 = re.findall(r'^#\s+"([^"]+)",?$', block, re.M)
@@ -255,3 +257,54 @@ def test_send_command_matches_install_mode():
     assert "uvx" not in server.self_command(), "không tra PyPI — tên gói chưa đăng ký"
     plugin_mod = load_plugin(os.environ["AGW_WORKDIR"])
     assert plugin_mod.PACKAGED is False and plugin_mod.self_command().startswith("uv run --script ")
+
+
+def test_remote_plugin_manifest():
+    """Plugin remote (M5): chỉ 1 server HTTP tới URL người dùng nhập, OAuth do Claude Code lo — không header Authorization."""
+    manifest = json.loads((REMOTE_PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    mcp_cfg = json.loads((REMOTE_PLUGIN / ".mcp.json").read_text(encoding="utf-8"))
+    market = json.loads((REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    assert manifest["name"] == "sota-agentic-gateway-remote"
+    entry = next(x for x in market["plugins"] if x["name"] == manifest["name"])
+    assert (REPO / entry["source"]).resolve() == REMOTE_PLUGIN.resolve()
+    assert manifest["userConfig"] == {"remote_url": manifest["userConfig"]["remote_url"]}
+    assert manifest["userConfig"]["remote_url"]["required"] is True, "URL rỗng → Claude Code báo lỗi kết nối"
+    servers = mcp_cfg["mcpServers"]
+    assert list(servers) == ["sota-agentic-gateway"]
+    srv = servers["sota-agentic-gateway"]
+    assert srv == {"type": "http", "url": "${user_config.remote_url}"}, "không đặt headers: Authorization sẽ tắt OAuth"
+    local_cfg = json.loads((PLUGIN / ".mcp.json").read_text(encoding="utf-8"))
+    assert all(v.get("type") != "http" for v in local_cfg["mcpServers"].values()), "plugin cục bộ không mang server remote"
+    assert not (REMOTE_PLUGIN / "server").exists(), "plugin remote không chạy mã trên máy"
+    for skill in ("sota-saas",):
+        assert (REMOTE_PLUGIN / "skills" / skill / "SKILL.md").read_bytes() == (PLUGIN / "skills" / skill / "SKILL.md").read_bytes()
+
+
+def test_prompts_local_and_remote():
+    """M5: MCP prompts = quy trình có người duyệt cho client không có skill."""
+    from mcp import Client
+
+    from agw_remote_mcp import build_server as build_remote
+
+    async def prompts_of(server, call=None):
+        async with Client(server) as c:
+            names = {p.name for p in (await c.list_prompts()).prompts}
+            text = None
+            if call:
+                res = await c.get_prompt(call[0], call[1])
+                text = res.messages[0].content.text
+            return names, text
+
+    work = tempfile.mkdtemp(prefix="agw-mcp-")
+    local, text = asyncio.run(prompts_of(load_plugin(work).build_server(), ("reply_local", {"uid": "42"})))
+    assert local == {"triage_local", "reply_local", "fill_template_local"}, local
+    assert 'mail_read(uid="42")' in text and "draft_send` ONLY after" in text and "EXTERNAL DATA" in text
+    with_saas, _ = asyncio.run(prompts_of(load_plugin(work, AGW_API_URL="http://agw.test",
+                                                      AGW_API_KEY="agw_abcd1234_x").build_server()))
+    assert with_saas == local | {"inbox_saas", "reply_saas"}
+    import httpx2
+
+    remote, text = asyncio.run(prompts_of(build_remote(httpx2.AsyncClient(base_url="http://unused")),
+                                          ("reply_saas", {"item_id": "m1"})))
+    assert remote == {"inbox_saas", "reply_saas"}, remote
+    assert "APPROVAL REQUEST" in text and "draft_send" not in text and 'saas_inbox_get(item_id="m1")' in text

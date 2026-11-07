@@ -5,8 +5,12 @@ description: Work with a SOTA Agentic Gateway SaaS workspace from Claude — uni
 
 # SOTA Agentic Gateway workspace
 
-Requires the plugin settings `api_url` and `api_key` (create the key in the web app: Settings → API keys; role MEMBER
-is enough). Check with `gateway_status`.
+The `saas_*` tools come from one of two places:
+- **Remote** (plugin `sota-agentic-gateway-remote`, recommended): the workspace's `https://<api>/mcp`, signed in with
+  OAuth from `/mcp` — no key to copy. If its tools are missing or answer 401, tell the user to open `/mcp` and log in.
+- **Local** (plugin `sota-agentic-gateway` with settings `api_url` + `api_key`, key from Settings → API keys, role
+  MEMBER is enough). Check with `gateway_status`.
+If no `saas_*` tool is available at all, tell the user which plugin / settings to configure.
 
 - Inbox: `saas_inbox_list` (filter by `status`, `label`, `q`) → `saas_inbox_get`. Run `saas_analyze` only when the
   item has no analysis yet (it spends the workspace's AI budget).
@@ -14,8 +18,8 @@ is enough). Check with `gateway_status`.
   `saas_query(connection_id, name, params)` — only pre-declared read-only queries are allowed.
 - Documents: `saas_templates`, `saas_fill_template`.
 - Replies: `saas_save_reply_draft` → `saas_request_reply`. This creates an approval; a human approves it on the web.
-- Playbooks: `saas_playbooks`; `saas_run_playbook` asks the user to confirm, and any outbound step still waits for web
-  approval.
+- Playbooks: `saas_playbooks`; `saas_run_playbook` (local mode only) asks the user to confirm, and any outbound step
+  still waits for web approval. In remote mode, ask the user to start the playbook from the web app.
 - Monitoring: `saas_approvals` (read-only), `saas_dashboard` (traffic, AI cost, workload).
 
 Never claim something was sent when the tool returned an approval id — say it is waiting for approval.

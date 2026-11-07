@@ -67,10 +67,10 @@ from mcp.types import ToolAnnotations  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402  (mcp phụ thuộc pydantic)
 
 from agw_core import __version__ as CORE_VERSION  # noqa: E402
-from agw_core import doctext, rules, saas_tools, templates, textsearch  # noqa: E402
+from agw_core import doctext, prompts, rules, saas_tools, templates, textsearch  # noqa: E402
 from agw_core.email_parse import ParsedEmail, parse_email  # noqa: E402
 
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 MAX_BODY_CHARS = 20_000
 MAX_FILE_BYTES = 25 * 1024 * 1024
 SEND_MODES = ("elicit", "cli", "disabled")
@@ -616,8 +616,11 @@ def build_server() -> MCPServer:
         return smtp_send(d)
 
     # ── SaaS ──
-    if CFG.saas_enabled or os.environ.get("AGW_EXPOSE_SAAS_TOOLS") == "1":
+    saas_on = CFG.saas_enabled or os.environ.get("AGW_EXPOSE_SAAS_TOOLS") == "1"
+    if saas_on:
         _saas_tools(server, guard, RO_EXT)
+    # ── prompts (quy trình có người duyệt cho client không có skill) ──
+    prompts.register(server, local=True, saas=saas_on)
     return server
 
 

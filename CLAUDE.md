@@ -18,8 +18,14 @@ dữ liệu khách). Kế hoạch / nhật ký chung vẫn ở repo SaaS (`SPEC.
 - Bất biến HITL: không công cụ nào tự gửi / ghi ra ngoài; không có công cụ duyệt (API key không duyệt). MCP cục bộ:
   gửi chỉ sau `Resolve(...)` + `Elicit`; file chỉ trong `AGW_WORKDIR`; IMAP chỉ đọc. Remote: gửi = tạo yêu cầu duyệt.
 - Công cụ cần elicitation chỉ có ở MCP cục bộ (remote stateless không hỏi người dùng được).
-- **Một số phiên bản** cho cả repo — đổi cùng lúc 5 chỗ (test kiểm): `pyproject.toml` `version`, `VERSION` trong
-  `agw_mcp/server.py`, `agw_core.__version__`, `plugin.json`, `marketplace.json`; rồi sync + `claude plugin validate`.
+- **Một số phiên bản** cho cả repo — đổi cùng lúc (test kiểm): `pyproject.toml` `version`, `VERSION` trong
+  `agw_mcp/server.py`, `agw_core.__version__`, 2 `plugin.json`, 2 mục trong `marketplace.json`; rồi sync +
+  `claude plugin validate` cho cả 2 plugin và marketplace.
+- **2 plugin (M5):** `sota-agentic-gateway` (cục bộ, stdio) và `sota-agentic-gateway-remote` (chỉ 1 server HTTP
+  `${user_config.remote_url}`, `required: true`). KHÔNG gộp server remote vào plugin cục bộ: URL userConfig để trống →
+  Claude Code báo "Failed to connect" (đã thử 2.1.299). KHÔNG đặt `headers.Authorization` cho server remote (tắt OAuth).
+  Skill dùng chung (`SHARED_SKILLS` trong sync script) chỉ sửa ở plugin cục bộ rồi sync.
+- **Prompts** (`agw_core/prompts.py`): quy trình cho client không có skill; sửa skill liên quan thì sửa prompt tương ứng.
 - **Phát hành PyPI** (`sota-agw-mcp`) — **CHƯA phát hành, chỉ nội bộ (👤 chốt 2026-11-07); không tag `v*` / `test-v*`
   khi chưa được chốt.** Không viết hướng dẫn / mã gọi `uvx sota-agw-mcp` không kèm `--from` (tên chưa đăng ký PyPI →
   có thể cài gói chiếm tên). Khi được phép: KHÔNG `uv publish` từ máy. Tag `vX.Y.Z` khớp version → `publish.yml` (Trusted

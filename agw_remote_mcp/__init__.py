@@ -35,7 +35,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.types import ToolAnnotations
 
-from agw_core import saas_tools
+from agw_core import prompts, saas_tools
 
 __all__ = ["INTERNAL_SCOPE_KEY", "RemoteMCP", "build_server", "mark_internal", "VERSION"]
 
@@ -104,6 +104,7 @@ def build_server(http: httpx2.AsyncClient, *, api_prefix: str = "/api/v1") -> MC
                        description="Workspace SOTA Agentic Gateway: hộp thư hợp nhất, phân tích, tri thức, dữ liệu, "
                                    "template, playbook — gửi luôn qua người duyệt.")
     saas_tools.register(server, call, guard=_guard, ro=_RO, req=_REQ)
+    prompts.register(server, local=False, saas=True)
     return server
 
 
